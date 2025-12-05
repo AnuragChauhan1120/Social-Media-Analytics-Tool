@@ -10,12 +10,10 @@ psycopg2-binary==2.9.9
 requests==2.31.0
 beautifulsoup4==4.12.3
 
-# HuggingFace models & tokenizers
 transformers==4.36.2
 tokenizers==0.15.1
 
-# Torch (Streamlit-cloud SAFE CPU version)
-torch==2.0.1+cpu
 --find-links https://download.pytorch.org/whl/cpu
+torch==2.0.1+cpu
 
 nltk==3.8.1

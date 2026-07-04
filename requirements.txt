@@ -17,3 +17,5 @@ transformers==4.36.2
 tokenizers==0.15.1
 torch==2.2.2
 nltk==3.8.1
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1

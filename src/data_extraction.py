@@ -5,13 +5,10 @@ import pandas as pd
 from dotenv import load_dotenv
 from pathlib import Path
 
-# ✅ Load API credentials
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path)
 
-print("Loaded ENV from:", env_path)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-print("API KEY LOADED:", YOUTUBE_API_KEY)
 
 
 def extract_video_id(url):
@@ -40,7 +37,8 @@ def get_comments(video_url, max_results=200):
             "textFormat": "plainText"
         }
 
-        response = requests.get(api_url, params=params)
+        response = requests.get(api_url, params=params, timeout=20)
+        response.raise_for_status()
         data = response.json()
 
         if "error" in data:
@@ -86,4 +84,3 @@ if __name__ == "__main__":
     create_comments_table()
     insert_comments(df)
     print("✅ Comments inserted into PostgreSQL!\n")
-

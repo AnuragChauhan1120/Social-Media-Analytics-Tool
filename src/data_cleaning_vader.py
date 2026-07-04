@@ -3,10 +3,8 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import pandas as pd
 from src.db_utils import get_connection
-from transformer_models import TransformerSentimentModel, TransformerEmotionModel
-
-sentiment_model = TransformerSentimentModel()
-emotion_model = TransformerEmotionModel()
+from transformer_models import TransformerSentimentModel
+from cpu_emotion_model import CPUEmotionModel
 
 analyzer = SentimentIntensityAnalyzer()
 
@@ -86,8 +84,6 @@ def update_vader_in_db(only_null=True, batch_size=500):
             label = vader_label_from_compound(s["compound"])
             updates.append((s["compound"], s["pos"], s["neu"], s["neg"], label, comment_id))
 
-        args_str = ",".join(["(%s,%s,%s,%s,%s,%s)"] * len(updates))
-        # We'll just run individual updates to keep it simple and safe
         for comp, p, neu, neg, lab, cid in updates:
             cur.execute("""
                 UPDATE youtube_comments
@@ -132,6 +128,8 @@ def update_transformers_in_db(only_null=True, batch_size=200):
     print(f"Found {len(rows)} rows for transformer analysis.")
 
     i = 0
+    sentiment_model = TransformerSentimentModel()
+    emotion_model = CPUEmotionModel()
     while i < len(rows):
         batch = rows[i:i+batch_size]
         texts = [(t or "") for _, t in batch]
@@ -145,5 +143,39 @@ def update_transformers_in_db(only_null=True, batch_size=200):
         for (comment_id, text), s_res, e_res in zip(batch, sent_results, emo_results):
             cur.execute("""
                 UPDATE youtube_comments
-                SET transformer_sentimen_
+                SET transformer_sentiment=%s,
+                    t_positive=%s,
+                    t_negative=%s,
+                    t_neutral=%s,
+                    joy=%s,
+                    anger=%s,
+                    fear=%s,
+                    sadness=%s,
+                    disgust=%s,
+                    surprise=%s,
+                    trust=%s,
+                    anticipation=%s
+                WHERE comment_id=%s
+            """, (
+                s_res.get("sentiment_label", "neutral"),
+                s_res.get("positive_score", 0.0),
+                s_res.get("negative_score", 0.0),
+                s_res.get("neutral_score", 0.0),
+                e_res.get("joy", 0.0),
+                e_res.get("anger", 0.0),
+                e_res.get("fear", 0.0),
+                e_res.get("sadness", 0.0),
+                e_res.get("disgust", 0.0),
+                e_res.get("surprise", 0.0),
+                e_res.get("trust", 0.0),
+                e_res.get("anticipation", 0.0),
+                comment_id,
+            ))
 
+        conn.commit()
+        i += batch_size
+        print(f"Processed {i if i < len(rows) else len(rows)} / {len(rows)}")
+
+    cur.close()
+    conn.close()
+    print("Transformer update complete.")

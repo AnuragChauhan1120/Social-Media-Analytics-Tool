@@ -81,7 +81,10 @@ def fetch_twitter_comments(tweet_url: str):
     if not tweet_id:
         return pd.DataFrame()
 
-    xquik_rows = fetch_xquik_replies(tweet_id)
+    try:
+        xquik_rows = fetch_xquik_replies(tweet_id)
+    except requests.RequestException:
+        xquik_rows = pd.DataFrame()
     if not xquik_rows.empty:
         return xquik_rows
 

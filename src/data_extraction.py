@@ -1,9 +1,10 @@
 import os
-import re
-import requests
-import pandas as pd
-from dotenv import load_dotenv
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path)
@@ -13,8 +14,20 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 def extract_video_id(url):
     """Extract YouTube video ID from URL."""
-    match = re.search(r"v=([a-zA-Z0-9_-]+)", url)
-    return match.group(1) if match else None
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    path_parts = [part for part in parsed.path.split("/") if part]
+
+    if hostname in {"youtu.be", "www.youtu.be"}:
+        return path_parts[0] if path_parts else None
+
+    if hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
+        if parsed.path == "/watch":
+            return parse_qs(parsed.query).get("v", [None])[0]
+        if len(path_parts) >= 2 and path_parts[0] in {"embed", "live", "shorts"}:
+            return path_parts[1]
+
+    return None
 
 
 def get_comments(video_url, max_results=200):
@@ -63,9 +76,9 @@ def get_comments(video_url, max_results=200):
     return pd.DataFrame(comments[:max_results])
 
 
-from db_utils import create_comments_table, insert_comments
-
 if __name__ == "__main__":
+    from src.db_utils import create_comments_table, insert_comments
+
     print("\nFetching comments...")
     df = get_comments("https://www.youtube.com/watch?v=McXJj7sjcZ0", max_results=200)
 
